@@ -38,23 +38,23 @@ def y(t):
     return m * (e_field - b_field * v_0) / (q * b_field * b_field) * (1 - cos(q * b_field * t / m))
 
 print('enter empty string for default, use e.g. 0.1e+2 or 4e-3')
-b_str = input(f'B= (default {B_FIELD_DEFAULT}, > 0, in T)')
+b_str = input(f'B= (default {B_FIELD_DEFAULT}, != 0, in T)')
 if b_str.isspace() or len(b_str) == 0:
     b_field = B_FIELD_DEFAULT
 else:
     b_field = float(b_str)
-if b_field <= 0:
-    print(f'B must be > 0, but was {b_field}')
+if b_field == 0:
+    print(f'B must be != 0, but was {b_field}')
     exit(-1)
 
-e_str = input(f'E= (default {E_FIELD_DEFAULT}, >= 0, in N/C)')
+e_str = input(f'E= (default {E_FIELD_DEFAULT}, in N/C)')
 if e_str.isspace() or len(e_str) == 0:
     e_field = E_FIELD_DEFAULT
 else:
     e_field = float(e_str)
-if e_field < 0:
-    print(f'E must be >= 0, but was {e_field}')
-    exit(-1)
+
+if e_field * b_field < 0:
+    print('Warning: the forces of the E and B field are acting in the same direction -> not a Wien filter')
 
 v_0_str = input(f'v_0= (default {V_0_DEFAULT} = E/B, > 0, in m/s)')
 if v_0_str.isspace() or len(v_0_str) == 0:
@@ -114,7 +114,6 @@ if resolution <= 0:
 
 
 points = [(0, 0)]
-start_time = time()
 point = (0, 0)
 t = 0
 
@@ -125,7 +124,6 @@ while not (point[0] < 0.0 or point[0] > width or abs(point[1]) > height / 2):
     if len(points) > 10000:
         print('Stopped calculation, because to many points where calculated. Maybe try a longer time as resolution.')
 
-#points.sort(key=lambda x: x[0])
 x_s, y_s = zip(*points)
 
 for i in range(1, num_arrows):
@@ -151,9 +149,10 @@ for i in range(0, num_arrows):
             # arrows out of the screen plane
             plt.gca().add_patch(plt.Circle((x_pos, y_pos), radius=radius/5, color='green'))
         else:
-            radius = radius * sin(1/4 * pi)
-            plt.plot([x_pos-radius, x_pos+radius], [y_pos-radius, y_pos+radius], color='green')
-            plt.plot([x_pos-radius, x_pos+radius], [y_pos+radius, y_pos-radius], color='green')
+            # arrows into the screen plane
+            line_radius = radius * sin(1/4 * pi)
+            plt.plot([x_pos-line_radius, x_pos+line_radius], [y_pos-line_radius, y_pos+line_radius], color='green')
+            plt.plot([x_pos-line_radius, x_pos+line_radius], [y_pos+line_radius, y_pos-line_radius], color='green')
 
 
 plt.plot(x_s, y_s, color='blue')
