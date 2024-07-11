@@ -1,4 +1,4 @@
-from math import sin, cos, pi
+from math import sin, cos, pi, sqrt
 from time import time
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
@@ -16,7 +16,7 @@ M_DEFAULT = 1.6726e-27 # kg proton mass
 WIDTH_DEFAULT = 0.20 # m
 HEIGHT_DEFAULT = 0.10 # m
 RESOLUTION_DEFAULT = 1.0e-9 # s
-
+SHOW_SIMUL_DEFAULT = False
 
 b_field = 0
 e_field = 0
@@ -29,6 +29,8 @@ height = 0
 
 resolution = 0
 
+show_simul = False
+
 num_arrows = 8
 
 def x(t):
@@ -37,8 +39,8 @@ def x(t):
 def y(t):
     return m * (e_field - b_field * v_0) / (q * b_field * b_field) * (1 - cos(q * b_field * t / m))
 
-print('enter empty string for default, use e.g. 0.1e+2 or 4e-3')
-b_str = input(f'B= (default {B_FIELD_DEFAULT}, != 0, in T)')
+print('enter empty string for default, use 0.1e+2 or 4e-3')
+b_str = input(f'B= (default {B_FIELD_DEFAULT}, != 0, in T) ')
 if b_str.isspace() or len(b_str) == 0:
     b_field = B_FIELD_DEFAULT
 else:
@@ -47,7 +49,7 @@ if b_field == 0:
     print(f'B must be != 0, but was {b_field}')
     exit(-1)
 
-e_str = input(f'E= (default {E_FIELD_DEFAULT}, in N/C)')
+e_str = input(f'E= (default {E_FIELD_DEFAULT}, in N/C) ')
 if e_str.isspace() or len(e_str) == 0:
     e_field = E_FIELD_DEFAULT
 else:
@@ -56,7 +58,7 @@ else:
 if e_field * b_field < 0:
     print('Warning: the forces of the E and B field are acting in the same direction -> not a Wien filter')
 
-v_0_str = input(f'v_0= (default {V_0_DEFAULT} = E/B, > 0, in m/s)')
+v_0_str = input(f'v_0= (default {V_0_DEFAULT} = E/B, > 0, in m/s) ')
 if v_0_str.isspace() or len(v_0_str) == 0:
     v_0 = V_0_DEFAULT
 else:
@@ -65,7 +67,7 @@ if v_0 <= 0:
     print(f'v_0 must be > 0, but was {v_0}')
     exit(-1)
 
-q_str = input(f'q= (default {Q_DEFAULT}, e=-1.6022e-19C, p=1.6022e-19C, in C)')
+q_str = input(f'q= (default {Q_DEFAULT}, e=-1.6022e-19C, p=1.6022e-19C, in C) ')
 if q_str.isspace() or len(q_str) == 0:
     q = Q_DEFAULT
 elif q_str.strip() == 'e':
@@ -75,7 +77,7 @@ elif q_str.strip() == 'p':
 else:
     q = float(q_str)
 
-m_str = input(f'm= (default {M_DEFAULT}, me=9.1094e-31kg, mp=1.6726e-27kg, in kg)')
+m_str = input(f'm= (default {M_DEFAULT}, me=9.1094e-31kg, mp=1.6726e-27kg, in kg) ')
 if m_str.isspace() or len(m_str) == 0:
     m = M_DEFAULT
 elif m_str.strip() == 'me':
@@ -85,7 +87,7 @@ elif m_str.strip() == 'mp':
 else:
     m = float(m_str)
 
-w_str = input(f'width= (default {WIDTH_DEFAULT}, > 0, in m)')
+w_str = input(f'width= (default {WIDTH_DEFAULT}, > 0, in m) ')
 if w_str.isspace() or len(w_str) == 0:
     width = WIDTH_DEFAULT
 else:
@@ -94,7 +96,7 @@ if width <= 0:
     print(f'width must be > 0, but was {width}')
     exit(-1)
 
-h_str = input(f'height= (default {HEIGHT_DEFAULT}, > 0, in m)')
+h_str = input(f'height= (default {HEIGHT_DEFAULT}, > 0, in m) ')
 if h_str.isspace() or len(h_str) == 0:
     height = HEIGHT_DEFAULT
 else:
@@ -103,7 +105,7 @@ if height <= 0:
     print(f'width must be > 0, but was {height}')
     exit(-1)
 
-r_str = input(f'resulution= (default {RESOLUTION_DEFAULT}, time between points, in s)')
+r_str = input(f'resulution= (default {RESOLUTION_DEFAULT}, time between points, in s) ')
 if r_str.isspace() or len(r_str) == 0:
     resolution = RESOLUTION_DEFAULT
 else:
@@ -112,6 +114,10 @@ if resolution <= 0:
     print(f'width must be > 0, but was {resolution}')
     exit(-1)
 
+if input(f'Show simulation[{"Y" if SHOW_SIMUL_DEFAULT else "y"}/{"n" if SHOW_SIMUL_DEFAULT else "N"}] ').strip() == ("n" if SHOW_SIMUL_DEFAULT else "y"):
+    show_simul = not SHOW_SIMUL_DEFAULT
+else:
+    show_simul = SHOW_SIMUL_DEFAULT
 
 points = [(0, 0)]
 point = (0, 0)
@@ -124,7 +130,34 @@ while not (point[0] < 0.0 or point[0] > width or abs(point[1]) > height / 2):
     if len(points) > 10000:
         print('Stopped calculation, because to many points where calculated. Maybe try a longer time as resolution.')
 
-x_s, y_s = zip(*points)
+points_simulation = [(0, 0)]
+point = (0, 0)
+v_x = v_0
+v_y = 0
+t = 0
+
+while not (point[0] < 0.0 or point[0] > width or abs(point[1]) > height / 2) and show_simul:
+    f_el = q * e_field
+    
+    f_lorentz_x = q * v_y * b_field
+    f_lorentz_y = -q * v_x * b_field
+
+    f_x = f_lorentz_x
+    f_y = f_lorentz_y + f_el
+
+    a_x = f_x / m
+    a_y = f_y / m
+
+    v_x = v_x + a_x * resolution
+    v_y = v_y + a_y * resolution
+
+    point = (point[0] + v_x * resolution, point[1] + v_y * resolution)
+
+    points_simulation.append(point)
+    t += resolution
+
+    if len(points) > 10000:
+        print('Stopped calculation, because to many points where calculated. Maybe try a longer time as resolution.')
 
 for i in range(1, num_arrows):
     x_pos = (width / num_arrows) * i
@@ -154,13 +187,18 @@ for i in range(0, num_arrows):
             plt.plot([x_pos-line_radius, x_pos+line_radius], [y_pos-line_radius, y_pos+line_radius], color='green')
             plt.plot([x_pos-line_radius, x_pos+line_radius], [y_pos+line_radius, y_pos-line_radius], color='green')
 
-
+x_s, y_s = zip(*points)
 plt.plot(x_s, y_s, color='blue')
+
+x_s, y_s = zip(*points_simulation)
+if show_simul:
+    plt.plot(x_s, y_s, color='orange')
 
 
 legend_elements = [Patch(color='lightgreen', label=f'E={e_field:.4E}N/C'),
                    Patch(color='green', label=f'B={b_field:.4E}T'),
                    Patch(color='blue', label=f'Particle v_0={v_0:.4E}m/s, q={q:.4E}C, m={m:.4E}kg'),
+                   Patch(color='orange', label=f'Particle (simulated)'),
                    ]
 
 plt.gca().legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, 1.4))
